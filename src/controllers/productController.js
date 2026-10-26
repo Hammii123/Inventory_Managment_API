@@ -100,7 +100,7 @@ export const getAllProducts = async(req, res) => {
     }
 };
 
-export const getProductBYId = async (req, res) =>{
+export const getProductById = async (req, res) =>{
     try{
         const {id} = req.params;
 
@@ -136,3 +136,121 @@ export const getProductBYId = async (req, res) =>{
     }
 
 };
+
+
+export const updateProduct = async (req,res) => {
+  try{
+    const {id} = req.params;
+    const {name,sku,quantity,price,category} = req.body;
+
+    if(!mongoose.isValidObjectId(id)){
+      return res.status(400).json({
+        success:false,
+        message:"Invalid product ID",
+      });
+    }
+
+
+    const allowedFields = [
+      "name", "sku" , "quantity", "price","category",
+    ];
+
+    const updates = {};
+
+    for(const field of allowedFields) {
+      if (Object.hasOwn(req.body , field)){
+        updates[field] = req.body[field];
+      }
+    }
+
+    if(Object.keys(updates).length === 0){
+      return res.status(400).json({
+        success:false,
+        message:"Provide at least one field to update",
+      });
+    }
+
+    if(
+      ("name" in updates && typeof name !== "string") || ("sku" in updates && typeof sku !== "string")|| ("category" in updates && typeof category !== "string")
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:"Name, SKU and category must be strings",
+      });
+    }
+
+
+    if (
+      ("price" in updates && (typeof price !== "number" || !Number.isFinite(price) || price<=0)) || ("quantity" in updates && (typeof quantity !=="number" || !Number.isFinite(quantity) || quantity<= 0))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:"Price and quantity must be positive numbers",
+      }); 
+       }
+
+       const product = await Product.findByIdAndUpdate(
+        id,updates,{
+          new:true ,
+          runValidators:true,
+        }
+       );
+
+       if(!product) {
+        return res.status(404).json({
+          success:false,
+          message:"Product not found",
+        });
+       }
+
+       return res.status(200).json ({
+        success:true,
+        message:"Product updated successfully",
+        data:product,
+       });
+
+  }  catch (error){
+       if(error.code === 11000){
+        return res.status(409).json({
+          success:false,
+          message:"SKU already exists" ,
+        });
+       }
+
+       if (error.name === "ValidationError" || error.name === "CastError"){
+        return res.status(400).json({
+          success:false,
+          message:error.message,
+        });
+       }
+
+       console.error("update product error:",error.message);
+       
+
+       return res.status(500).json({
+        success:false,
+        message:"Internal server error",
+       });
+  }
+};
+
+
+export const deleteProduct = async (req,res) => {
+  try{
+    const {id} = req.params;
+
+    if(!mongoose.isValidObjectId(id)){
+      return res.status(400).json({
+        success:false,
+        message:"Invalid product ID",
+      });
+    }
+
+    const product = await Product.findByIdAndDelete(id);
+    
+    
+    if(!product){
+      return res.status(404).js
+    }
+  }
+}
