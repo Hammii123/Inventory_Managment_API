@@ -95,6 +95,8 @@ export const getAllProducts = async (req, res) => {
       limit = "10",
       search = "",
       category="",
+      sortBy = "createdAt",
+      order = "desc"
     } = req.query;
 
     page = Number(page);
@@ -130,6 +132,9 @@ export const getAllProducts = async (req, res) => {
     }
     
     category = category.trim();
+
+
+    const 
 
     // Search by product name or SKU
     const filter = search
