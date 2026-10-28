@@ -1,6 +1,8 @@
 
 import Product from "../models/Product.js";
 import mongoose from "mongoose";
+import InventoryHistory from "../models/InventoryHistory.js";
+import Supplier from "../models/Supplier.js";
 
 // CREATE PRODUCT
 export const createProduct = async (req, res) => {
@@ -49,13 +51,38 @@ export const createProduct = async (req, res) => {
       }
     }
 
-    const product = await Product.create({
-      name: name.trim(),
-      sku: sku.trim(),
-      quantity,
-      price,
-      category: category.trim(),
+
+
+    if (req.body.supplier) {
+  if (!mongoose.isValidObjectId(req.body.supplier)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid supplier ID",
     });
+  }
+
+  const supplierExists = await Supplier.findById(req.body.supplier);
+
+  if (!supplierExists) {
+    return res.status(404).json({
+      success: false,
+      message: "Supplier not found",
+    });
+  }
+}
+
+
+
+   
+const product = await Product.create({
+  name: name.trim(),
+  sku: sku.trim(),
+  quantity,
+  price,
+  category: category.trim(),
+  supplier: req.body.supplier || null,
+});
+
 
     return res.status(201).json({
       success: true,
@@ -134,7 +161,25 @@ export const getAllProducts = async (req, res) => {
     category = category.trim();
 
 
-    const 
+    const  allowedSortFields = [
+      "name" , "price" , "quantity" , "createdAt",
+    ];
+
+    if(!allowedSortFields.includes(sortBy)) {
+      return res.status(400).json({
+        success:false,
+        message:"Invalid sort field",
+      });
+    }
+
+    if(!["asc", "desc"].includes(order)){
+      return res,status(400).json({
+        success:false,
+        message:"Order must be asc or desc"
+      });
+    }
+
+
 
     // Search by product name or SKU
     const filter = search
@@ -168,7 +213,9 @@ export const getAllProducts = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const products = await Product.find(filter)
-      .sort({ createdAt: -1 })
+      .sort({ 
+        [sortBy]: order === "asc"?1:-1,
+      })
       .skip(skip)
       .limit(limit);
 
@@ -378,6 +425,137 @@ export const deleteProduct = async (req, res) => {
     });
   } catch (error) {
     console.error("Delete product error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
+
+export const updateStock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { quantity, operation } = req.body;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
+
+    if (
+      typeof quantity !== "number" ||
+      !Number.isFinite(quantity) ||
+      quantity <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Quantity must be a positive number",
+      });
+    }
+
+    if (!["add", "subtract"].includes(operation)) {
+      return res.status(400).json({
+        success: false,
+        message: "Operation must be add or subtract",
+      });
+    }
+
+    // Find the product and check its current stock
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    const previousQuantity = product.quantity;
+
+    let newQuantity;
+
+    if (operation === "add") {
+      newQuantity = previousQuantity + quantity;
+    } else {
+      newQuantity = previousQuantity - quantity;
+
+      if (newQuantity < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Insufficient stock",
+        });
+      }
+    }
+
+    // Update the product's current stock
+    product.quantity = newQuantity;
+    await product.save();
+
+    // Save the stock change in inventory history
+    const history = await InventoryHistory.create({
+      product: product._id,
+      operation,
+      quantityChanged: quantity,
+      previousQuantity,
+      newQuantity,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Stock updated and history recorded successfully",
+      data: {
+        product,
+        history,
+      },
+    });
+  } catch (error) {
+    console.error("Update stock error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
+
+export const getInventoryHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
+
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    const history = await InventoryHistory.find({
+      product: id,
+    }).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: history.length,
+      data: history,
+    });
+  } catch (error) {
+    console.error("Get inventory history error:", error.message);
 
     return res.status(500).json({
       success: false,

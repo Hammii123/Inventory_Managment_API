@@ -3,6 +3,8 @@ import "dotenv/config";
 import express from "express";
 import connectDB from "./config/db.js";
 import productRoutes from "./routes/productRoutes.js";
+import supplierRoutes from "./routes/supplierRoutes.js";
+
 
 const app = express();
 
@@ -39,4 +41,8 @@ const startServer = async () => {
   }
 };
 
+
+app.use("/api/products",productRoutes);
+
+app.use("/api/suppliers",supplierRoutes)
 startServer();

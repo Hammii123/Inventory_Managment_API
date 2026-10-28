@@ -53,6 +53,11 @@ const productSchema = new mongoose.Schema(
             },
         },
         
+        supplier:{
+            type:mongoose.Schema.Types.ObjectId,
+            ref:"Supplier",
+            default:null,
+        },
         
        },
 
