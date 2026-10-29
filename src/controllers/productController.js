@@ -3,6 +3,7 @@ import Product from "../models/Product.js";
 import mongoose from "mongoose";
 import InventoryHistory from "../models/InventoryHistory.js";
 import Supplier from "../models/Supplier.js";
+import  {stringify} from "csv-stringify";
 
 // CREATE PRODUCT
 export const createProduct = async (req, res) => {
@@ -212,12 +213,15 @@ export const getAllProducts = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    const products = await Product.find(filter)
-      .sort({ 
-        [sortBy]: order === "asc"?1:-1,
-      })
-      .skip(skip)
-      .limit(limit);
+    
+const products = await Product.find(filter)
+  .populate("supplier", "name email phone company")
+  .sort({
+    [sortBy]: order === "asc" ? 1 : -1,
+  })
+  .skip(skip)
+  .limit(limit);
+
 
     const totalProducts =
       await Product.countDocuments(filter);
@@ -254,7 +258,11 @@ export const getProductById = async (req, res) => {
       });
     }
 
-    const product = await Product.findById(id);
+
+const product = await Product.findById(id)
+  .populate("supplier", "name email phone company");
+
+
 
     if (!product) {
       return res.status(404).json({
@@ -295,6 +303,7 @@ export const updateProduct = async (req, res) => {
       "quantity",
       "price",
       "category",
+      "supplier",
     ];
 
     const updates = {};
@@ -348,6 +357,32 @@ export const updateProduct = async (req, res) => {
         }
       }
     }
+
+
+    if (Object.hasOwn(updates,"supplier")) {
+      if(updates.supplier !== null &&  updates.supplier !== ""){
+        if(!mongoose.isValidObjectId(updates.supplier)){
+          return res.status(400).json({
+            success:false,
+            message:"Invalid supplier ID",
+          });
+        }
+        const supplierExists = await Supplier.findById(updates.supplier);
+
+        if(!supplierExists){
+          return res.status(404).json({
+            success:false,
+            message:"Supplier not found",
+          });
+        }
+      }
+      else {
+        updates.supplier=null;
+      }
+    }
+
+
+
 
     const product = await Product.findByIdAndUpdate(
       id,
@@ -563,3 +598,65 @@ export const getInventoryHistory = async (req, res) => {
     });
   }
 };
+
+
+export const uploadProductImage = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
+
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Please upload an image",
+      });
+    }
+
+    product.image = req.file.path;
+
+    await product.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Product image uploaded successfully",
+      image: product.image,
+      product,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const exportProductsCSV = async(req,res,next ) => {
+  try{
+    const products = await Product.find().populate("supplier","name eamil");
+
+
+    const csvData = products.map((product) => ({
+      id:product._id.toString(),
+      name:product.name,
+      sku:product.sku,
+      quantity:product.price,
+      category:product.category,
+      supplier:product.supplier?.name || "",
+      image:product.image,
+      createdAt:product.createdAt,
+    }));
+    
+  }
+}

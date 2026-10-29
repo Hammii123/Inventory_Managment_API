@@ -8,6 +8,8 @@ import supplierRoutes from "./routes/supplierRoutes.js";
 
 const app = express();
 
+app.use("/uploads", express.static("uploads"));
+
 app.use(express.json());
 
 app.get("/", (req, res) => {

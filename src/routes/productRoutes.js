@@ -10,6 +10,9 @@ import {
   getInventoryHistory
 } from "../controllers/productController.js";
 
+import upload from "../middleware/uploadMiddleware.js"
+import { uploadProductImage } from "../controllers/productController.js";
+
 const router = express.Router();
 
 router.post("/", createProduct);
@@ -21,4 +24,9 @@ router.delete("/:id",deleteProduct);
 
 router.patch("/:id/stock",updateStock);
 router.patch("/:id/history",getInventoryHistory)
+router.patch(
+  "/:id/image",
+  upload.single("image"),
+  uploadProductImage
+);
 export default router;
