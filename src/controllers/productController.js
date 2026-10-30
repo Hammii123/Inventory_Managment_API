@@ -3,12 +3,20 @@ import Product from "../models/Product.js";
 import mongoose from "mongoose";
 import InventoryHistory from "../models/InventoryHistory.js";
 import Supplier from "../models/Supplier.js";
-import  {stringify} from "csv-stringify";
+import  {stringify} from "csv-stringify/sync";
 
 // CREATE PRODUCT
 export const createProduct = async (req, res) => {
   try {
-    const { name, sku, quantity, price, category } = req.body;
+    
+    const {
+  name,
+  sku,
+  quantity,
+  price,
+  category,
+  supplier: supplierDetails
+} = req.body;
 
     // Validate string fields
     const stringFields = [
@@ -53,37 +61,75 @@ export const createProduct = async (req, res) => {
     }
 
 
+let supplierId = null;
 
-    if (req.body.supplier) {
-  if (!mongoose.isValidObjectId(req.body.supplier)) {
+if (supplierDetails) {
+  if (
+    typeof supplierDetails !== "object" ||
+    Array.isArray(supplierDetails)
+  ) {
     return res.status(400).json({
       success: false,
-      message: "Invalid supplier ID",
+      message: "Supplier must be an object",
     });
   }
 
-  const supplierExists = await Supplier.findById(req.body.supplier);
+  const { name, email, phone, address, company } = supplierDetails;
 
-  if (!supplierExists) {
-    return res.status(404).json({
+  if (
+    typeof name !== "string" ||
+    !name.trim() ||
+    typeof email !== "string" ||
+    !email.trim() ||
+    typeof phone !== "string" ||
+    !phone.trim() ||
+    typeof address !== "string" ||
+    !address.trim()
+  ) {
+    return res.status(400).json({
       success: false,
-      message: "Supplier not found",
+      message: "Supplier name, email, phone and address are required",
     });
   }
+  const emailRegex =
+  /^[A-Za-z][A-Za-z0-9._$-]*@[A-Za-z]+\.[A-Za-z]{2,}$/;
+
+if (!emailRegex.test(email.trim())) {
+  return res.status(400).json({
+    success: false,
+    field: "email",
+    message: "Email must start with a letter and have a valid email format",
+  });
+}
+
+  let supplier = await Supplier.findOne({
+    email: email.trim().toLowerCase(),
+  });
+
+  if (!supplier) {
+    supplier = await Supplier.create({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      address: address.trim(),
+      company: typeof company === "string" ? company.trim() : "",
+    });
+  }
+
+  supplierId = supplier._id;
 }
 
 
-
-   
-const product = await Product.create({
+  const product = await Product.create({
   name: name.trim(),
   sku: sku.trim(),
   quantity,
   price,
   category: category.trim(),
-  supplier: req.body.supplier || null,
+  supplier: supplierId,
 });
 
+await product.populate("supplier");
 
     return res.status(201).json({
       success: true,
@@ -91,10 +137,23 @@ const product = await Product.create({
       data: product,
     });
   } catch (error) {
+    if (error.name === "ValidationError") {
+  const errors = Object.values(error.errors).map((err) => ({
+    field: err.path,
+    message: err.message,
+  }));
+
+  return res.status(400).json({
+    success: false,
+    errors,
+  });
+}
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
-        message: "SKU already exists",
+        field,
+        message:
+        field === "email"?"Supplier email already exits": "SKU already exists",
       });
     }
 
@@ -657,6 +716,30 @@ export const exportProductsCSV = async(req,res,next ) => {
       image:product.image,
       createdAt:product.createdAt,
     }));
-    
+
+    const output = stringify(csvData, {
+  header: true,
+  columns: [
+    "id",
+    "name",
+    "sku",
+    "quantity",
+    "price",
+    "category",
+    "supplier",
+    "image",
+    "createdAt",
+  ],
+});
+
+res.setHeader("Content-Type", "text/csv; charset=utf-8");
+res.setHeader(
+  "Content-Disposition",
+  'attachment; filename="products.csv"'
+);
+
+res.status(200).send(output);
+  } catch (error) {
+    next(error);
   }
 }

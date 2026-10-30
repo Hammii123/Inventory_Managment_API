@@ -5,32 +5,41 @@ import mongoose from "mongoose";
 export const createSupplier = async (req, res) => {
   try {
     const { name, email, phone, address, company } = req.body;
+const requiredFields = [
+  { field: "name", value: name },
+  { field: "email", value: email },
+  { field: "phone", value: phone },
+  { field: "address", value: address },
+];
 
-    // Validate required fields
-    if (
-      typeof name !== "string" ||
-      typeof email !== "string" ||
-      typeof phone !== "string" ||
-      typeof address !== "string"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Name, email, phone, and address must be strings",
-      });
-    }
+for (const item of requiredFields) {
+  if (typeof item.value !== "string") {
+    return res.status(400).json({
+      success: false,
+      field: item.field,
+      message: `${item.field} must be a string`,
+    });
+  }
 
-    if (
-      !name.trim() ||
-      !email.trim() ||
-      !phone.trim() ||
-      !address.trim()
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Name, email, phone, and address are required",
-      });
-    }
+  if (!item.value.trim()) {
+    return res.status(400).json({
+      success: false,
+      field: item.field,
+      message: `${item.field} is required`,
+    });
+  }
+}
 
+if (
+  company !== undefined &&
+  typeof company !== "string"
+) {
+  return res.status(400).json({
+    success: false,
+    field: "company",
+    message: "Company must be a string",
+  });
+}
     const supplier = await Supplier.create({
       name: name.trim(),
       email: email.trim().toLowerCase(),
@@ -46,26 +55,37 @@ export const createSupplier = async (req, res) => {
       data: supplier,
     });
   } catch (error) {
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "Supplier email already exists",
-      });
-    }
 
-    if (error.name === "ValidationError") {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
+    
+  // Mongoose field validation errors
+  if (error.name === "ValidationError") {
+    const errors = Object.values(error.errors).map((err) => ({
+      field: err.path,
+      message: err.message,
+    }));
 
-    console.error("Create supplier error:", error.message);
-
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Internal server error",
+      errors,
     });
+  }
+
+  // Duplicate email error
+  if (error.code === 11000) {
+    return res.status(409).json({
+      success: false,
+      field: Object.keys(error.keyPattern || {})[0],
+      message: "Supplier email already exists",
+    });
+  }
+
+  console.error("Create supplier error:", error.message);
+
+  return res.status(500).json({
+    success: false,
+    message: "Internal server error",
+  });
+
   }
 };
 
