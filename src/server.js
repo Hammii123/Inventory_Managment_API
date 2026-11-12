@@ -1,16 +1,23 @@
-
 import "dotenv/config";
 import express from "express";
+import cors from "cors";
 import connectDB from "./config/db.js";
 import productRoutes from "./routes/productRoutes.js";
 import supplierRoutes from "./routes/supplierRoutes.js";
 
-
 const app = express();
 
-app.use("/uploads", express.static("uploads"));
+// CORS must come before the routes
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "http://192.168.1.64:3000"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use(express.json());
+app.use("/uploads", express.static("uploads"));
 
 app.get("/", (req, res) => {
   res.status(200).json({
@@ -27,12 +34,14 @@ app.post("/test", (req, res) => {
 });
 
 app.use("/api/products", productRoutes);
+app.use("/api/suppliers", supplierRoutes);
 
 const startServer = async () => {
   try {
     await connectDB();
 
-    const PORT = process.env.PORT || 3000;
+    // Default 3001 so it never clashes with the Next.js frontend on 3000
+    const PORT = process.env.PORT || 3001;
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
@@ -43,8 +52,4 @@ const startServer = async () => {
   }
 };
 
-
-app.use("/api/products",productRoutes);
-
-app.use("/api/suppliers",supplierRoutes)
 startServer();

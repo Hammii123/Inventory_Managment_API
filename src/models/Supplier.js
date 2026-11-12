@@ -7,7 +7,10 @@ const supplierSchema = new mongoose.Schema(
       type: String,
       required: [true, "Supplier name is required"],
       trim: true,
-      match:[/^[A-Za-z]+$/,"Supplier name must contain only letters"],
+      match: [
+        /^[A-Za-z][A-Za-z .'-]*$/,
+        "Supplier name must contain valid letters",
+      ],
     },
 
     email: {
@@ -17,8 +20,8 @@ const supplierSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       match: [
-  /^[A-Za-z][A-Za-z0-9._$-]*@[A-Za-z]+\.[A-Za-z]{2,}$/,
-  "Email must start with a letter, followed by optional numbers or special characters, @, domain letters, dot and extension letters",
+  /^[A-Za-z][A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]*@[A-Za-z]+(?:[.-][A-Za-z]+)*\.[A-Za-z]{2,}$/,
+  "Please enter a valid email address",
 ],
     },
 
@@ -26,10 +29,10 @@ const supplierSchema = new mongoose.Schema(
       type: String,
       required: [true, "Supplier phone is required"],
       trim: true,
-      match:[ 
-        /^\+?[0-9]+$/,
-        "Phone Number must contain only digits with optional + at the beginning",
-      ]
+      match: [
+        /^\d{11}$/,
+        "Phone number must contain exactly 11 digits",
+      ],
     },
 
     address: {
@@ -39,14 +42,14 @@ const supplierSchema = new mongoose.Schema(
     },
 
     company: {
-      type: String,
-      trim: true,
-      default: "",
-      match:[
-        /^[A-Za-z ]*$/,
-        "Company name must contain only letters and spaces",
-      ],
-    },
+  type: String,
+  required: [true, "Company name is required"],
+  trim: true,
+  match: [
+    /^[A-Za-z0-9 &.,'-]+$/,
+    "Company name contains invalid characters",
+  ],
+},
   },
   {
     timestamps: true,

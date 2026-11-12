@@ -5,20 +5,19 @@ import InventoryHistory from "../models/InventoryHistory.js";
 import Supplier from "../models/Supplier.js";
 import  {stringify} from "csv-stringify/sync";
 
-// CREATE PRODUCT
+
 export const createProduct = async (req, res) => {
   try {
-    
     const {
-  name,
-  sku,
-  quantity,
-  price,
-  category,
-  supplier: supplierDetails
-} = req.body;
+      name,
+      sku,
+      quantity,
+      price,
+      category,
+      supplier: supplierDetails,
+    } = req.body;
 
-    // Validate string fields
+    // Validate required product string fields
     const stringFields = [
       { field: "name", value: name },
       { field: "sku", value: sku },
@@ -26,14 +25,7 @@ export const createProduct = async (req, res) => {
     ];
 
     for (const item of stringFields) {
-      if (typeof item.value !== "string") {
-        return res.status(400).json({
-          success: false,
-          message: `${item.field} must be a string`,
-        });
-      }
-
-      if (item.value.trim() === "") {
+      if (typeof item.value !== "string" || !item.value.trim()) {
         return res.status(400).json({
           success: false,
           message: `${item.field} is required`,
@@ -41,131 +33,173 @@ export const createProduct = async (req, res) => {
       }
     }
 
-    // Validate numeric fields
-    const numericFields = [
-      { field: "price", value: price },
-      { field: "quantity", value: quantity },
+    const productNameRegex = /^[A-Za-z0-9][A-Za-z0-9 &().,'/_+-]*$/;
+
+if (!productNameRegex.test(name.trim())) {
+  return res.status(400).json({
+    success: false,
+    field: "name",
+    message: "Product name contains invalid characters",
+  });
+}
+
+    // Validate quantity
+    if (
+      typeof quantity !== "number" ||
+      !Number.isInteger(quantity) ||
+      quantity <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        field: "quantity",
+        message: "Quantity must be a positive integer",
+      });
+    }
+
+    // Validate price
+    if (
+      typeof price !== "number" ||
+      !Number.isFinite(price) ||
+      price <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        field: "price",
+        message: "Price must be a positive number",
+      });
+    }
+
+    // Supplier is required
+    if (
+      !supplierDetails ||
+      typeof supplierDetails !== "object" ||
+      Array.isArray(supplierDetails)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Supplier information is required",
+      });
+    }
+
+    const { name: supplierName, email, phone, address, company } =
+      supplierDetails;
+
+    // Validate required supplier fields
+    const requiredSupplierFields = [
+      { field: "supplier name", value: supplierName },
+      { field: "supplier email", value: email },
+      { field: "supplier phone", value: phone },
+      { field: "supplier address", value: address },
     ];
 
-    for (const item of numericFields) {
-      if (
-        typeof item.value !== "number" ||
-        !Number.isFinite(item.value) ||
-        item.value <= 0
-      ) {
+    for (const item of requiredSupplierFields) {
+      if (typeof item.value !== "string" || !item.value.trim()) {
         return res.status(400).json({
           success: false,
-          message: `${item.field} must be a positive number`,
+          message: `${item.field} is required`,
         });
       }
     }
 
+    // Validate supplier email
+    const emailRegex =
+  /^[A-Za-z][A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]*@[A-Za-z]+(?:[.-][A-Za-z]+)*\.[A-Za-z]{2,}$/;
 
-let supplierId = null;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({
+        success: false,
+        field: "email",
+        message: "Please enter a valid supplier email",
+      });
+    }
 
-if (supplierDetails) {
-  if (
-    typeof supplierDetails !== "object" ||
-    Array.isArray(supplierDetails)
-  ) {
-    return res.status(400).json({
-      success: false,
-      message: "Supplier must be an object",
-    });
-  }
+    // Validate supplier phone
+    if (!/^\d{11}$/.test(phone.trim())) {
+      return res.status(400).json({
+        success: false,
+        field: "phone",
+        message: "Supplier phone must contain exactly 11 digits",
+      });
+    }
 
-  const { name, email, phone, address, company } = supplierDetails;
-
-  if (
-    typeof name !== "string" ||
-    !name.trim() ||
-    typeof email !== "string" ||
-    !email.trim() ||
-    typeof phone !== "string" ||
-    !phone.trim() ||
-    typeof address !== "string" ||
-    !address.trim()
-  ) {
-    return res.status(400).json({
-      success: false,
-      message: "Supplier name, email, phone and address are required",
-    });
-  }
-  const emailRegex =
-  /^[A-Za-z][A-Za-z0-9._$-]*@[A-Za-z]+\.[A-Za-z]{2,}$/;
-
-if (!emailRegex.test(email.trim())) {
+    // Validate optional company
+    if (typeof company !== "string" || !company.trim()) {
   return res.status(400).json({
     success: false,
-    field: "email",
-    message: "Email must start with a letter and have a valid email format",
+    field: "company",
+    message: "Company name is required",
   });
 }
-
-  let supplier = await Supplier.findOne({
-    email: email.trim().toLowerCase(),
-  });
-
-  if (!supplier) {
-    supplier = await Supplier.create({
-      name: name.trim(),
+    let supplier = await Supplier.findOne({
       email: email.trim().toLowerCase(),
-      phone: phone.trim(),
-      address: address.trim(),
-      company: typeof company === "string" ? company.trim() : "",
     });
-  }
 
-  supplierId = supplier._id;
-}
+    if (supplier) {
+      // Update existing supplier details with submitted information
+      supplier.name = supplierName.trim();
+      supplier.phone = phone.trim();
+      supplier.address = address.trim();
+      supplier.company =
+        typeof company === "string" ? company.trim() : "";
 
+      await supplier.save();
+    } else {
+      supplier = await Supplier.create({
+        name: supplierName.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+        address: address.trim(),
+        company: typeof company === "string" ? company.trim() : "",
+      });
+    }
 
-  const product = await Product.create({
-  name: name.trim(),
-  sku: sku.trim(),
-  quantity,
-  price,
-  category: category.trim(),
-  supplier: supplierId,
-});
+    // Create product
+    const product = await Product.create({
+      name: name.trim(),
+      sku: sku.trim(),
+      quantity,
+      price,
+      category: category.trim(),
+      supplier: supplier._id,
+    });
 
-await product.populate("supplier");
+    await product.populate("supplier");
 
     return res.status(201).json({
       success: true,
       message: "Product created successfully",
       data: product,
     });
+
   } catch (error) {
+    // Mongoose validation errors
     if (error.name === "ValidationError") {
-  const errors = Object.values(error.errors).map((err) => ({
-    field: err.path,
-    message: err.message,
-  }));
+      const errors = Object.values(error.errors).map((err) => ({
+        field: err.path,
+        message: err.message,
+      }));
 
-  return res.status(400).json({
-    success: false,
-    errors,
-  });
-}
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        field,
-        message:
-        field === "email"?"Supplier email already exits": "SKU already exists",
-      });
-    }
-
-    if (error.name === "ValidationError" ||
-        error.name === "CastError") {
       return res.status(400).json({
         success: false,
-        message: error.message,
+        errors,
       });
     }
 
-    console.error("Create product error:", error.message);
+    // Duplicate SKU or supplier email
+    if (error.code === 11000) {
+      const duplicateField = Object.keys(error.keyPattern || {})[0];
+
+      return res.status(409).json({
+        success: false,
+        field: duplicateField,
+        message:
+          duplicateField === "email"
+            ? "Supplier email already exists"
+            : "SKU already exists",
+      });
+    }
+
+    console.error("Create product error:", error);
 
     return res.status(500).json({
       success: false,
@@ -366,6 +400,28 @@ export const updateProduct = async (req, res) => {
     ];
 
     const updates = {};
+    const hasSupplierName = Object.hasOwn(req.body, "supplierName");
+
+if (hasSupplierName) {
+  if (
+    typeof req.body.supplierName !== "string" ||
+    !req.body.supplierName.trim()
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Supplier name is required",
+    });
+  }
+
+  const supplierNameRegex = /^[A-Za-z][A-Za-z .'-]*$/;
+
+  if (!supplierNameRegex.test(req.body.supplierName.trim())) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid supplier name",
+    });
+  }
+}
 
     for (const field of allowedFields) {
       if (Object.hasOwn(req.body, field)) {
@@ -373,7 +429,7 @@ export const updateProduct = async (req, res) => {
       }
     }
 
-    if (Object.keys(updates).length === 0) {
+    if (Object.keys(updates).length === 0 && !hasSupplierName) {
       return res.status(400).json({
         success: false,
         message: "Provide at least one field to update",
@@ -443,14 +499,47 @@ export const updateProduct = async (req, res) => {
 
 
 
-    const product = await Product.findByIdAndUpdate(
-      id,
-      updates,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+const product = await Product.findById(id);
+
+if (!product) {
+  return res.status(404).json({
+    success: false,
+    message: "Product not found",
+  });
+}
+
+// Update supplier name if provided
+if (hasSupplierName) {
+  const supplierId = Object.hasOwn(updates, "supplier")
+    ? updates.supplier
+    : product.supplier;
+
+  if (!supplierId) {
+    return res.status(400).json({
+      success: false,
+      message: "This product has no supplier to update",
+    });
+  }
+
+  const supplier = await Supplier.findByIdAndUpdate(
+    supplierId,
+    { name: req.body.supplierName.trim() },
+    { new: true, runValidators: true }
+  );
+
+  if (!supplier) {
+    return res.status(404).json({
+      success: false,
+      message: "Supplier not found",
+    });
+  }
+}
+
+// Update product fields
+product.set(updates);
+await product.save();
+
+await product.populate("supplier");
 
     if (!product) {
       return res.status(404).json({
