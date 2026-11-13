@@ -24,6 +24,7 @@ export default function AddProductForm() {
     supplierPhone: "",
     supplierAddress: "",
     supplierCompany: "",
+    
   });
 
   // Validation patterns

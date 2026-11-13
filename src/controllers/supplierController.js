@@ -1,4 +1,4 @@
-
+import Product from "../models/Product.js";
 import Supplier from "../models/Supplier.js";
 import mongoose from "mongoose";
 // CREATE SUPPLIER
@@ -264,7 +264,6 @@ export const updateSupplier = async (req, res) => {
 };
 
 
-
 export const deleteSupplier = async (req, res) => {
   try {
     const { id } = req.params;
@@ -276,7 +275,8 @@ export const deleteSupplier = async (req, res) => {
       });
     }
 
-    const supplier = await Supplier.findByIdAndDelete(id);
+    // Check whether supplier exists
+    const supplier = await Supplier.findById(id);
 
     if (!supplier) {
       return res.status(404).json({
@@ -285,11 +285,22 @@ export const deleteSupplier = async (req, res) => {
       });
     }
 
+    // Unlink all products belonging to this supplier
+    const result = await Product.updateMany(
+      { supplier: id },
+      { $set: { supplier: null } }
+    );
+
+    // Delete supplier
+    await Supplier.findByIdAndDelete(id);
+
     return res.status(200).json({
       success: true,
       message: "Supplier deleted successfully",
+      unlinkedProducts: result.modifiedCount,
       data: supplier,
     });
+
   } catch (error) {
     console.error("Delete supplier error:", error.message);
 
