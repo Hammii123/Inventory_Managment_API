@@ -8,6 +8,7 @@ import {
   deleteProduct,
   updateStock,
   getInventoryHistory,
+  getRecentInventoryHistory,
   exportProductsCSV
 } from "../controllers/productController.js";
 
@@ -23,6 +24,8 @@ router.get("/", getAllProducts);
 
 router.get("/export/csv",exportProductsCSV);
 
+router.get("/history/recent", getRecentInventoryHistory);
+
 router.get("/:id", getProductById);
 
 router.put("/:id",updateProduct);
@@ -31,6 +34,8 @@ router.delete("/:id",deleteProduct);
 router.patch("/:id/stock",updateStock);
 
 router.get("/:id/history",getInventoryHistory)
+
+
 
 router.patch(
   "/:id/image",

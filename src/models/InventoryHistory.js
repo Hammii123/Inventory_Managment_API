@@ -9,6 +9,16 @@ const inventoryHistorySchema = new mongoose.Schema(
       required: [true, "Product ID is required"],
     },
 
+    productName: {
+  type: String,
+  required: true,
+},
+
+productSku: {
+  type: String,
+  required: true,
+},
+
     operation: {
       type: String,
       enum: ["add", "subtract"],

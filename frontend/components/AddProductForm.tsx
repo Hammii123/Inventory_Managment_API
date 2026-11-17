@@ -11,6 +11,10 @@ export default function AddProductForm() {
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
 
+  const [isOpen, setIsOpen] = useState(false);
+const [selectedImage, setSelectedImage] = useState<File | null>(null);
+
+
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const [formData, setFormData] = useState({
@@ -150,6 +154,35 @@ export default function AddProductForm() {
     setMessage("");
   }
 
+
+function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+  const file = e.target.files?.[0];
+
+  if (!file) return;
+
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+  if (!allowedTypes.includes(file.type)) {
+    setMessage("Only JPEG, PNG, and WebP images are allowed.");
+    setIsSuccess(false);
+    setSelectedImage(null);
+    e.target.value = "";
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    setMessage("Image size must not exceed 5MB.");
+    setIsSuccess(false);
+    setSelectedImage(null);
+    e.target.value = "";
+    return;
+  }
+
+  setSelectedImage(file);
+  setMessage("");
+}
+
+
   // Mark field as touched when user leaves it
   function handleBlur(field: string) {
     setTouched((previous) => ({
@@ -196,7 +229,29 @@ export default function AddProductForm() {
       );
 
       const result = await response.json();
+// Upload product image if user selected one
+if (response.ok && selectedImage) {
+  const productId = result.data._id;
 
+  const imageFormData = new FormData();
+  imageFormData.append("image", selectedImage);
+
+  const imageResponse = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}/image`,
+    {
+      method: "PATCH",
+      body: imageFormData,
+    }
+  );
+
+  const imageResult = await imageResponse.json();
+
+  if (!imageResponse.ok) {
+    throw new Error(
+      imageResult.message || "Product created, but image upload failed."
+    );
+  }
+}
       if (!response.ok) {
         let errorMessage = "Something went wrong";
 

@@ -3,7 +3,7 @@ import Product from "../models/Product.js";
 import mongoose from "mongoose";
 import InventoryHistory from "../models/InventoryHistory.js";
 import Supplier from "../models/Supplier.js";
-import  {stringify} from "csv-stringify/sync";
+import { stringify } from "csv-stringify/sync";
 
 
 export const createProduct = async (req, res) => {
@@ -35,13 +35,13 @@ export const createProduct = async (req, res) => {
 
     const productNameRegex = /^[A-Za-z0-9][A-Za-z0-9 &().,'/_+-]*$/;
 
-if (!productNameRegex.test(name.trim())) {
-  return res.status(400).json({
-    success: false,
-    field: "name",
-    message: "Product name contains invalid characters",
-  });
-}
+    if (!productNameRegex.test(name.trim())) {
+      return res.status(400).json({
+        success: false,
+        field: "name",
+        message: "Product name contains invalid characters",
+      });
+    }
 
     // Validate quantity
     if (
@@ -103,7 +103,7 @@ if (!productNameRegex.test(name.trim())) {
 
     // Validate supplier email
     const emailRegex =
-  /^[A-Za-z][A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]*@[A-Za-z]+(?:[.-][A-Za-z]+)*\.[A-Za-z]{2,}$/;
+      /^[A-Za-z][A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]*@[A-Za-z]+(?:[.-][A-Za-z]+)*\.[A-Za-z]{2,}$/;
 
     if (!emailRegex.test(email.trim())) {
       return res.status(400).json({
@@ -124,12 +124,12 @@ if (!productNameRegex.test(name.trim())) {
 
     // Validate optional company
     if (typeof company !== "string" || !company.trim()) {
-  return res.status(400).json({
-    success: false,
-    field: "company",
-    message: "Company name is required",
-  });
-}
+      return res.status(400).json({
+        success: false,
+        field: "company",
+        message: "Company name is required",
+      });
+    }
     let supplier = await Supplier.findOne({
       email: email.trim().toLowerCase(),
     });
@@ -215,7 +215,7 @@ export const getAllProducts = async (req, res) => {
       page = "1",
       limit = "10",
       search = "",
-      category="",
+      category = "",
       sortBy = "createdAt",
       order = "desc"
     } = req.query;
@@ -245,31 +245,31 @@ export const getAllProducts = async (req, res) => {
     }
     search = search.trim();
 
-    if(typeof category !== "string") {
+    if (typeof category !== "string") {
       return res.status(400).json({
         success: false,
-        message:"Category must be a atring"
+        message: "Category must be a atring"
       })
     }
-    
+
     category = category.trim();
 
 
-    const  allowedSortFields = [
-      "name" , "price" , "quantity" , "createdAt",
+    const allowedSortFields = [
+      "name", "price", "quantity", "createdAt",
     ];
 
-    if(!allowedSortFields.includes(sortBy)) {
+    if (!allowedSortFields.includes(sortBy)) {
       return res.status(400).json({
-        success:false,
-        message:"Invalid sort field",
+        success: false,
+        message: "Invalid sort field",
       });
     }
 
-    if(!["asc", "desc"].includes(order)){
-      return res,status(400).json({
-        success:false,
-        message:"Order must be asc or desc"
+    if (!["asc", "desc"].includes(order)) {
+      return res, status(400).json({
+        success: false,
+        message: "Order must be asc or desc"
       });
     }
 
@@ -278,42 +278,42 @@ export const getAllProducts = async (req, res) => {
     // Search by product name or SKU
     const filter = search
       ? {
-          $or: [
-            {
-              name: {
-                $regex: search,
-                $options: "i",
-              },
+        $or: [
+          {
+            name: {
+              $regex: search,
+              $options: "i",
             },
-            {
-              sku: {
-                $regex: search,
-                $options: "i",
-              },
+          },
+          {
+            sku: {
+              $regex: search,
+              $options: "i",
             },
-          ],
-        }
+          },
+        ],
+      }
       : {};
 
 
-  
-      if (category) {
-  filter.category = {
-    $regex: `^${category}$`,
-    $options: "i",
-  };
-}
+
+    if (category) {
+      filter.category = {
+        $regex: `^${category}$`,
+        $options: "i",
+      };
+    }
 
     const skip = (page - 1) * limit;
 
-    
-const products = await Product.find(filter)
-  .populate("supplier", "name email phone company")
-  .sort({
-    [sortBy]: order === "asc" ? 1 : -1,
-  })
-  .skip(skip)
-  .limit(limit);
+
+    const products = await Product.find(filter)
+      .populate("supplier", "name email phone company")
+      .sort({
+        [sortBy]: order === "asc" ? 1 : -1,
+      })
+      .skip(skip)
+      .limit(limit);
 
 
     const totalProducts =
@@ -352,8 +352,8 @@ export const getProductById = async (req, res) => {
     }
 
 
-const product = await Product.findById(id)
-  .populate("supplier", "name email phone company");
+    const product = await Product.findById(id)
+      .populate("supplier", "name email phone company");
 
 
 
@@ -402,26 +402,26 @@ export const updateProduct = async (req, res) => {
     const updates = {};
     const hasSupplierName = Object.hasOwn(req.body, "supplierName");
 
-if (hasSupplierName) {
-  if (
-    typeof req.body.supplierName !== "string" ||
-    !req.body.supplierName.trim()
-  ) {
-    return res.status(400).json({
-      success: false,
-      message: "Supplier name is required",
-    });
-  }
+    if (hasSupplierName) {
+      if (
+        typeof req.body.supplierName !== "string" ||
+        !req.body.supplierName.trim()
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Supplier name is required",
+        });
+      }
 
-  const supplierNameRegex = /^[A-Za-z][A-Za-z .'-]*$/;
+      const supplierNameRegex = /^[A-Za-z][A-Za-z .'-]*$/;
 
-  if (!supplierNameRegex.test(req.body.supplierName.trim())) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid supplier name",
-    });
-  }
-}
+      if (!supplierNameRegex.test(req.body.supplierName.trim())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid supplier name",
+        });
+      }
+    }
 
     for (const field of allowedFields) {
       if (Object.hasOwn(req.body, field)) {
@@ -474,72 +474,72 @@ if (hasSupplierName) {
     }
 
 
-    if (Object.hasOwn(updates,"supplier")) {
-      if(updates.supplier !== null &&  updates.supplier !== ""){
-        if(!mongoose.isValidObjectId(updates.supplier)){
+    if (Object.hasOwn(updates, "supplier")) {
+      if (updates.supplier !== null && updates.supplier !== "") {
+        if (!mongoose.isValidObjectId(updates.supplier)) {
           return res.status(400).json({
-            success:false,
-            message:"Invalid supplier ID",
+            success: false,
+            message: "Invalid supplier ID",
           });
         }
         const supplierExists = await Supplier.findById(updates.supplier);
 
-        if(!supplierExists){
+        if (!supplierExists) {
           return res.status(404).json({
-            success:false,
-            message:"Supplier not found",
+            success: false,
+            message: "Supplier not found",
           });
         }
       }
       else {
-        updates.supplier=null;
+        updates.supplier = null;
       }
     }
 
 
 
 
-const product = await Product.findById(id);
+    const product = await Product.findById(id);
 
-if (!product) {
-  return res.status(404).json({
-    success: false,
-    message: "Product not found",
-  });
-}
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
 
-// Update supplier name if provided
-if (hasSupplierName) {
-  const supplierId = Object.hasOwn(updates, "supplier")
-    ? updates.supplier
-    : product.supplier;
+    // Update supplier name if provided
+    if (hasSupplierName) {
+      const supplierId = Object.hasOwn(updates, "supplier")
+        ? updates.supplier
+        : product.supplier;
 
-  if (!supplierId) {
-    return res.status(400).json({
-      success: false,
-      message: "This product has no supplier to update",
-    });
-  }
+      if (!supplierId) {
+        return res.status(400).json({
+          success: false,
+          message: "This product has no supplier to update",
+        });
+      }
 
-  const supplier = await Supplier.findByIdAndUpdate(
-    supplierId,
-    { name: req.body.supplierName.trim() },
-    { new: true, runValidators: true }
-  );
+      const supplier = await Supplier.findByIdAndUpdate(
+        supplierId,
+        { name: req.body.supplierName.trim() },
+        { new: true, runValidators: true }
+      );
 
-  if (!supplier) {
-    return res.status(404).json({
-      success: false,
-      message: "Supplier not found",
-    });
-  }
-}
+      if (!supplier) {
+        return res.status(404).json({
+          success: false,
+          message: "Supplier not found",
+        });
+      }
+    }
 
-// Update product fields
-product.set(updates);
-await product.save();
+    // Update product fields
+    product.set(updates);
+    await product.save();
 
-await product.populate("supplier");
+    await product.populate("supplier");
 
     if (!product) {
       return res.status(404).json({
@@ -682,12 +682,13 @@ export const updateStock = async (req, res) => {
     // Save the stock change in inventory history
     const history = await InventoryHistory.create({
       product: product._id,
+      productName: product.name,
+      productSku: product.sku,
       operation,
       quantityChanged: quantity,
       previousQuantity,
       newQuantity,
     });
-
     return res.status(200).json({
       success: true,
       message: "Stock updated and history recorded successfully",
@@ -790,45 +791,74 @@ export const uploadProductImage = async (req, res, next) => {
   }
 };
 
-export const exportProductsCSV = async(req,res,next ) => {
-  try{
-    const products = await Product.find().populate("supplier","name eamil");
+export const exportProductsCSV = async (req, res, next) => {
+  try {
+    const products = await Product.find().populate("supplier", "name email");
 
 
     const csvData = products.map((product) => ({
-      id:product._id.toString(),
-      name:product.name,
-      sku:product.sku,
-      quantity:product.price,
-      category:product.category,
-      supplier:product.supplier?.name || "",
-      image:product.image,
-      createdAt:product.createdAt,
+      id: product._id.toString(),
+      name: product.name,
+      sku: product.sku,
+      quantity:product.quantity,
+      price: product.price,
+      category: product.category,
+      supplier: product.supplier?.name || "",
+      image: product.image,
+      createdAt: product.createdAt,
     }));
 
     const output = stringify(csvData, {
-  header: true,
-  columns: [
-    "id",
-    "name",
-    "sku",
-    "quantity",
-    "price",
-    "category",
-    "supplier",
-    "image",
-    "createdAt",
-  ],
-});
+      header: true,
+      columns: [
+        "id",
+        "name",
+        "sku",
+        "quantity",
+        "price",
+        "category",
+        "supplier",
+        "image",
+        "createdAt",
+      ],
+    });
 
-res.setHeader("Content-Type", "text/csv; charset=utf-8");
-res.setHeader(
-  "Content-Disposition",
-  'attachment; filename="products.csv"'
-);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="products.csv"'
+    );
 
-res.status(200).send(output);
+    res.status(200).send(output);
   } catch (error) {
     next(error);
   }
 }
+
+
+export const getRecentInventoryHistory = async (req, res) => {
+  try {
+    const limit = Math.min(
+      Math.max(Number(req.query.limit) || 10, 1),
+      50
+    );
+
+    const history = await InventoryHistory.find()
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      count: history.length,
+      data: history,
+    });
+  } catch (error) {
+    console.error("Get recent inventory history error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

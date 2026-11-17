@@ -17,6 +17,7 @@ interface Product {
   quantity: number;
   price: number;
   category: string;
+  image?: string;
   supplier: Supplier | null;
 }
 
@@ -85,12 +86,25 @@ async function ProductsContent({
     <div className="p-8">
       <AddProductForm />
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-800">Products</h1>
-        <p className="mt-2 text-slate-500">
-          Manage your inventory products here.
-        </p>
-      </div>
+      
+<div className="mb-8 flex items-center justify-between">
+  <div>
+    <h1 className="text-3xl font-bold text-slate-800">
+      Products
+    </h1>
+    <p className="mt-2 text-slate-500">
+      Manage your inventory products here.
+    </p>
+  </div>
+
+  <a
+    href={`${process.env.NEXT_PUBLIC_API_URL}/api/products/export/csv`}
+    className="rounded-lg bg-green-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-green-700"
+  >
+    Export CSV
+  </a>
+</div>
+
 
       {error ? (
         <p className="rounded-lg bg-red-100 p-4 text-red-600">{error}</p>
@@ -107,6 +121,7 @@ async function ProductsContent({
             <table className="w-full text-left">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
+                  <th className="p-4">Image</th>
                   <th className="p-4">Product Name</th>
                   <th className="p-4">SKU</th>
                   <th className="p-4">Category</th>
@@ -118,32 +133,46 @@ async function ProductsContent({
               </thead>
 
               <tbody>
-  {products.map((product) => (
-    <tr key={product._id} className="border-t border-slate-100">
-      <td className="p-4 font-medium text-slate-800">
-        {product.name}
-      </td>
+                {products.map((product) => (
+                  <tr key={product._id} className="border-t border-slate-100">
+                    <td className="p-4">
+                      {product.image ? (
+                        <img
+                          src={`${process.env.NEXT_PUBLIC_API_URL}/${product.image.replace(/\\/g, "/")}`}
+                          alt={product.name}
+                          className="h-14 w-14 rounded-lg border object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
+                          No Image
+                        </div>
+                      )}
+                    </td>
 
-      <td className="p-4 text-slate-600">{product.sku}</td>
+                    <td className="p-4 font-medium text-slate-800">
+                      {product.name}
+                    </td>
 
-      <td className="p-4 text-slate-600">{product.category}</td>
+                    <td className="p-4 text-slate-600">{product.sku}</td>
 
-      <td className="p-4 text-slate-600">{product.quantity}</td>
+                    <td className="p-4 text-slate-600">{product.category}</td>
 
-      <td className="p-4 text-slate-600">
-        Rs. {product.price.toLocaleString()}
-      </td>
+                    <td className="p-4 text-slate-600">{product.quantity}</td>
 
-      <td className="p-4 text-slate-600">
-        {product.supplier?.name || "No Supplier"}
-      </td>
+                    <td className="p-4 text-slate-600">
+                      Rs. {product.price.toLocaleString()}
+                    </td>
 
-      <td className="p-4">
-        <ProductActions product={product} />
-      </td>
-    </tr>
-  ))}
-</tbody>
+                    <td className="p-4 text-slate-600">
+                      {product.supplier?.name || "No Supplier"}
+                    </td>
+
+                    <td className="p-4">
+                      <ProductActions product={product} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
 
@@ -171,11 +200,10 @@ async function ProductsContent({
                   <Link
                     key={p}
                     href={`/products?page=${p}`}
-                    className={`rounded-lg border px-4 py-2 text-sm ${
-                      p === activePage
+                    className={`rounded-lg border px-4 py-2 text-sm ${p === activePage
                         ? "border-blue-600 bg-blue-600 text-white"
                         : "bg-white text-slate-700 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     {p}
                   </Link>

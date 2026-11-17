@@ -1,7 +1,10 @@
 export const instant = false;
 interface Product {
   _id: string;
+  name: string;
+  sku: string;
   quantity: number;
+  category: string;
 }
 
 interface ProductsResponse {
@@ -17,15 +20,38 @@ interface SuppliersResponse {
   count: number;
 }
 
+interface History {
+  _id: string;
+
+  product: string;
+  productName: string;
+  productSku: string;
+  operation: "add" | "subtract";
+  quantityChanged: number;
+  previousQuantity: number;
+  newQuantity: number;
+  createdAt: string;
+}
+
+interface HistoryResponse {
+  success: boolean;
+  count: number;
+  data: History[];
+}
+
 export default async function Home() {
   let totalProducts = 0;
   let totalSuppliers = 0;
-  let lowStockProducts = 0;
+  let lowStockProducts: Product[] = [];
+
+  let recentActivity: History[] = [];
+
 
   try {
     const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-    const [productsResponse, suppliersResponse] = await Promise.all([
+    const [productsResponse, suppliersResponse, historyResponse] = await Promise.all([
+
       fetch(`${API_URL}/api/products?limit=100`, {
         cache: "no-store",
       }),
@@ -33,19 +59,30 @@ export default async function Home() {
       fetch(`${API_URL}/api/suppliers`, {
         cache: "no-store",
       }),
+      fetch(`${API_URL}/api/products/history/recent?limit=10`, {
+        cache: "no-store",
+      }),
     ]);
 
-   if (!productsResponse.ok) {
-  throw new Error(
-    `Products API failed: ${productsResponse.status}`
-  );
-}
 
-if (!suppliersResponse.ok) {
-  throw new Error(
-    `Suppliers API failed: ${suppliersResponse.status}`
-  );
-}
+    if (!historyResponse.ok) {
+      throw new Error(`History API failed: ${historyResponse.status}`);
+    }
+
+    const historyResult: HistoryResponse = await historyResponse.json();
+
+    recentActivity = historyResult.data;
+    if (!productsResponse.ok) {
+      throw new Error(
+        `Products API failed: ${productsResponse.status}`
+      );
+    }
+
+    if (!suppliersResponse.ok) {
+      throw new Error(
+        `Suppliers API failed: ${suppliersResponse.status}`
+      );
+    }
 
     const productsResult: ProductsResponse =
       await productsResponse.json();
@@ -58,7 +95,7 @@ if (!suppliersResponse.ok) {
 
     lowStockProducts = productsResult.data.filter(
       (product) => product.quantity < 5
-    ).length;
+    );
 
   } catch (error) {
     console.error("Dashboard error:", error);
@@ -95,20 +132,14 @@ if (!suppliersResponse.ok) {
           <div className="rounded-xl bg-white p-6 shadow-sm">
             <p className="text-sm text-slate-500">Low Stock Products</p>
             <h3 className="mt-2 text-3xl font-bold text-red-500">
-              {lowStockProducts}
+              {lowStockProducts.length}
             </h3>
           </div>
         </section>
 
-        <section className="mt-8 rounded-xl bg-white p-6 shadow-sm">
-          <h3 className="text-xl font-semibold text-slate-800">
-            Recent Inventory Activity
-          </h3>
+        
 
-          <p className="mt-4 text-slate-500">
-            No inventory activity to display yet.
-          </p>
-        </section>
+
       </main>
     </div>
   );
