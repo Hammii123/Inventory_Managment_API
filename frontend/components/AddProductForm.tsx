@@ -285,8 +285,12 @@ if (response.ok && selectedImage) {
         supplierCompany: "",
       });
 
-      setTouched({});
-      router.refresh();
+           setTouched({});
+setSelectedImage(null);
+setIsOpen(false);
+
+router.refresh();
+
 
     } catch (error) {
       setIsSuccess(false);
@@ -303,11 +307,39 @@ if (response.ok && selectedImage) {
   }
 
   return (
-    <div className="mb-8 rounded-xl bg-white p-6 shadow-sm">
-      <h2 className="mb-6 text-xl font-bold text-slate-800">
-        Add New Product
-      </h2>
+  <>
+    <button
+      type="button"
+      onClick={() => setIsOpen(true)}
+      className="rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg"
+    >
+      + Add Product
+    </button>
 
+    {isOpen && (
+      <div
+  className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+  onClick={() => setIsOpen(false)}
+>
+        <div
+  className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
+  onClick={(e) => e.stopPropagation()}
+>
+
+
+     <div className="mb-6 flex items-center justify-between">
+  <h2 className="text-xl font-bold text-slate-800">
+    Add New Product
+  </h2>
+
+  <button
+    type="button"
+    onClick={() => setIsOpen(false)}
+    className="rounded-lg p-2 text-2xl text-slate-500 transition hover:bg-slate-100 hover:text-red-600"
+  >
+    &times;
+  </button>
+</div>
       <form onSubmit={handleSubmit} className="space-y-6">
 
         {/* Product Information */}
@@ -381,6 +413,52 @@ if (response.ok && selectedImage) {
               />
               {getError("category")}
             </div>
+
+
+<div className="md:col-span-2">
+  <label className="mb-2 block text-sm font-semibold text-slate-700">
+    Product Image
+  </label>
+
+  <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 transition hover:border-indigo-500 hover:bg-indigo-50">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="mb-2 h-8 w-8 text-indigo-600"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 8l-4-4m0 0L8 8m4-4v12"
+      />
+    </svg>
+
+    <span className="text-sm font-semibold text-indigo-600">
+      Click to upload product image
+    </span>
+
+    <span className="mt-1 text-xs text-slate-500">
+      JPEG, PNG or WebP (Maximum 5MB)
+    </span>
+
+    <input
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
+      onChange={handleImageChange}
+      className="hidden"
+    />
+  </label>
+
+  {selectedImage && (
+    <p className="mt-2 text-sm font-medium text-green-600">
+      Selected: {selectedImage.name}
+    </p>
+  )}
+</div>
+
 
           </div>
         </div>
@@ -483,7 +561,10 @@ if (response.ok && selectedImage) {
           </div>
         )}
 
-      </form>
-    </div>
+            </form>
+        </div>
+      </div>
+    )}
+  </>
   );
 }

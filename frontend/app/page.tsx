@@ -20,58 +20,28 @@ interface SuppliersResponse {
   count: number;
 }
 
-interface History {
-  _id: string;
-
-  product: string;
-  productName: string;
-  productSku: string;
-  operation: "add" | "subtract";
-  quantityChanged: number;
-  previousQuantity: number;
-  newQuantity: number;
-  createdAt: string;
-}
-
-interface HistoryResponse {
-  success: boolean;
-  count: number;
-  data: History[];
-}
 
 export default async function Home() {
   let totalProducts = 0;
   let totalSuppliers = 0;
   let lowStockProducts: Product[] = [];
 
-  let recentActivity: History[] = [];
 
 
   try {
     const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const [productsResponse, suppliersResponse] = await Promise.all([
+  fetch(`${API_URL}/api/products?limit=100`, {
+    cache: "no-store",
+  }),
 
-    const [productsResponse, suppliersResponse, historyResponse] = await Promise.all([
-
-      fetch(`${API_URL}/api/products?limit=100`, {
-        cache: "no-store",
-      }),
-
-      fetch(`${API_URL}/api/suppliers`, {
-        cache: "no-store",
-      }),
-      fetch(`${API_URL}/api/products/history/recent?limit=10`, {
-        cache: "no-store",
-      }),
-    ]);
+  fetch(`${API_URL}/api/suppliers`, {
+    cache: "no-store",
+  }),
+]);
 
 
-    if (!historyResponse.ok) {
-      throw new Error(`History API failed: ${historyResponse.status}`);
-    }
-
-    const historyResult: HistoryResponse = await historyResponse.json();
-
-    recentActivity = historyResult.data;
+    
     if (!productsResponse.ok) {
       throw new Error(
         `Products API failed: ${productsResponse.status}`

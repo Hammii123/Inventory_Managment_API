@@ -2,6 +2,11 @@ import { Suspense } from "react";
 import Link from "next/link";
 import AddProductForm from "@/components/AddProductForm";
 import ProductActions from "@/components/ProductActions";
+import ProductFilters from "@/components/ProductFilters";
+
+
+
+
 interface Supplier {
   _id: string;
   name: string;
@@ -50,9 +55,22 @@ function getPageNumbers(current: number, total: number): number[] {
 async function ProductsContent({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    search?: string;
+    category?: string;
+    minPrice?: string;
+    maxPrice?: string;
+  }>;
 }) {
-  const { page } = await searchParams;
+  const {
+    page,
+    search = "",
+    category = "",
+    minPrice = "",
+    maxPrice = "",
+  } = await searchParams;
+
   const currentPage = Math.max(1, Number(page) || 1);
 
   let products: Product[] = [];
@@ -60,11 +78,19 @@ async function ProductsContent({
   let error = "";
 
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/products?page=${currentPage}&limit=${PAGE_SIZE}`,
-      { cache: "no-store" }
-    );
+    const queryParams = new URLSearchParams({
+  page: String(currentPage),
+  limit: String(PAGE_SIZE),
+  search,
+  category,
+  minPrice,
+  maxPrice,
+});
 
+const response = await fetch(
+  `${process.env.NEXT_PUBLIC_API_URL}/api/products?${queryParams.toString()}`,
+  { cache: "no-store" }
+);
     if (!response.ok) {
       throw new Error("Failed to fetch products");
     }
@@ -84,10 +110,9 @@ async function ProductsContent({
 
   return (
     <div className="p-8">
-      <AddProductForm />
-
       
-<div className="mb-8 flex items-center justify-between">
+
+<div className="mb-8 flex flex-wrap items-center justify-between gap-4">
   <div>
     <h1 className="text-3xl font-bold text-slate-800">
       Products
@@ -96,15 +121,22 @@ async function ProductsContent({
       Manage your inventory products here.
     </p>
   </div>
+ 
 
-  <a
-    href={`${process.env.NEXT_PUBLIC_API_URL}/api/products/export/csv`}
-    className="rounded-lg bg-green-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-green-700"
-  >
-    Export CSV
-  </a>
+  <div className="flex items-center gap-3">
+    <AddProductForm />
+
+    <a
+      href={`${process.env.NEXT_PUBLIC_API_URL}/api/products/export/csv`}
+      className="rounded-lg bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-green-700"
+    >
+      Export CSV
+    </a>
+  </div>
 </div>
 
+
+ <ProductFilters />
 
       {error ? (
         <p className="rounded-lg bg-red-100 p-4 text-red-600">{error}</p>

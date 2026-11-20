@@ -211,14 +211,16 @@ export const createProduct = async (req, res) => {
 // GET ALL PRODUCTS WITH PAGINATION AND SEARCH
 export const getAllProducts = async (req, res) => {
   try {
-    let {
-      page = "1",
-      limit = "10",
-      search = "",
-      category = "",
-      sortBy = "createdAt",
-      order = "desc"
-    } = req.query;
+   let {
+  page = "1",
+  limit = "10",
+  search = "",
+  category = "",
+  minPrice = "",
+  maxPrice = "",
+  sortBy = "createdAt",
+  order = "desc"
+} = req.query;
 
     page = Number(page);
     limit = Number(limit);
@@ -253,7 +255,37 @@ export const getAllProducts = async (req, res) => {
     }
 
     category = category.trim();
+     // Validate price filters
+if (
+  (minPrice !== "" && !Number.isFinite(Number(minPrice))) ||
+  (maxPrice !== "" && !Number.isFinite(Number(maxPrice)))
+) {
+  return res.status(400).json({
+    success: false,
+    message: "Minimum and maximum price must be valid numbers.",
+  });
+}
 
+if (
+  (minPrice !== "" && Number(minPrice) < 0) ||
+  (maxPrice !== "" && Number(maxPrice) < 0)
+) {
+  return res.status(400).json({
+    success: false,
+    message: "Price cannot be negative.",
+  });
+}
+
+if (
+  minPrice !== "" &&
+  maxPrice !== "" &&
+  Number(minPrice) > Number(maxPrice)
+) {
+  return res.status(400).json({
+    success: false,
+    message: "Minimum price cannot be greater than maximum price.",
+  });
+}
 
     const allowedSortFields = [
       "name", "price", "quantity", "createdAt",
@@ -303,6 +335,19 @@ export const getAllProducts = async (req, res) => {
         $options: "i",
       };
     }
+
+    // Filter products by price range
+if (minPrice !== "" || maxPrice !== "") {
+  filter.price = {};
+
+  if (minPrice !== "") {
+    filter.price.$gte = Number(minPrice);
+  }
+
+  if (maxPrice !== "") {
+    filter.price.$lte = Number(maxPrice);
+  }
+}
 
     const skip = (page - 1) * limit;
 
@@ -709,44 +754,7 @@ export const updateStock = async (req, res) => {
 
 
 
-export const getInventoryHistory = async (req, res) => {
-  try {
-    const { id } = req.params;
 
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid product ID",
-      });
-    }
-
-    const product = await Product.findById(id);
-
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
-    }
-
-    const history = await InventoryHistory.find({
-      product: id,
-    }).sort({ createdAt: -1 });
-
-    return res.status(200).json({
-      success: true,
-      count: history.length,
-      data: history,
-    });
-  } catch (error) {
-    console.error("Get inventory history error:", error.message);
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-};
 
 
 export const uploadProductImage = async (req, res, next) => {

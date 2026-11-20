@@ -10,12 +10,12 @@ interface Product {
   category: string;
   quantity: number;
   price: number;
-    image?: string | null;
+  image?: string | null;
   supplier?: {
     _id: string;
     name: string;
   } | null;
-  
+
 }
 
 interface ProductActionsProps {
@@ -30,6 +30,8 @@ export default function ProductActions({ product }: ProductActionsProps) {
   const [uploading, setUploading] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
+
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     name: product.name,
@@ -76,58 +78,83 @@ export default function ProductActions({ product }: ProductActionsProps) {
   }
 
   async function handleImageUpload(
-  event: React.ChangeEvent<HTMLInputElement>
-) {
-  const file = event.target.files?.[0];
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
 
-  if (!file) return;
+    if (!file) return;
 
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
 
-  if (!allowedTypes.includes(file.type)) {
-    setMessage("Only JPEG, PNG, and WebP images are allowed.");
-    event.target.value = "";
-    return;
-  }
-
-  if (file.size > 5 * 1024 * 1024) {
-    setMessage("Image size must be less than 5 MB.");
-    event.target.value = "";
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append("image", file);
-
-  setUploading(true);
-  setMessage("");
-
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/products/${product._id}/image`,
-      {
-        method: "PATCH",
-        body: formData,
-      }
-    );
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.message || "Image upload failed");
+    if (!allowedTypes.includes(file.type)) {
+      setMessage("Only JPEG, PNG, and WebP images are allowed.");
+      event.target.value = "";
+      return;
     }
 
-    setMessage("Product image uploaded successfully!");
-    router.refresh();
-  } catch (error) {
-    setMessage(
-      error instanceof Error ? error.message : "Something went wrong"
-    );
-  } finally {
-    setUploading(false);
-    event.target.value = "";
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage("Image size must be less than 5 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    setUploading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/products/${product._id}/image`,
+        {
+          method: "PATCH",
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Image upload failed");
+      }
+
+      setMessage("Product image uploaded successfully!");
+      router.refresh();
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Something went wrong"
+      );
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
   }
-}
+
+  function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      setMessage("Only JPEG, PNG, and WebP images are allowed.");
+      setSelectedImage(null);
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage("Image size must not exceed 5MB.");
+      setSelectedImage(null);
+      event.target.value = "";
+      return;
+    }
+
+    setSelectedImage(file);
+    setMessage("");
+  }
 
   async function handleUpdate() {
     if (
@@ -155,13 +182,13 @@ export default function ProductActions({ product }: ProductActionsProps) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-  name: formData.name.trim(),
-  sku: formData.sku.trim(),
-  category: formData.category.trim(),
-  quantity: Number(formData.quantity),
-  price: Number(formData.price),
-  supplierName: formData.supplierName.trim(),
-}),
+            name: formData.name.trim(),
+            sku: formData.sku.trim(),
+            category: formData.category.trim(),
+            quantity: Number(formData.quantity),
+            price: Number(formData.price),
+            supplierName: formData.supplierName.trim(),
+          }),
         },
       );
 
@@ -170,11 +197,34 @@ export default function ProductActions({ product }: ProductActionsProps) {
       if (!response.ok) {
         throw new Error(result.message || "Failed to update product");
       }
+      // Upload selected image if user chose a new one
+      if (selectedImage) {
+        const imageFormData = new FormData();
+        imageFormData.append("image", selectedImage);
 
+        const imageResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/products/${product._id}/image`,
+          {
+            method: "PATCH",
+            body: imageFormData,
+          }
+        );
+
+        const imageResult = await imageResponse.json();
+
+        if (!imageResponse.ok) {
+          throw new Error(
+            imageResult.message || "Product updated, but image upload failed."
+          );
+        }
+      }
       setIsEditing(false);
+      setSelectedImage(null);
       setMessage("Product updated successfully!");
 
       router.refresh();
+
+
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Something went wrong",
@@ -205,49 +255,63 @@ export default function ProductActions({ product }: ProductActionsProps) {
         </button>
       </div>
 
-      
-<div className="mt-3">
-  <label
-    className={`inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:from-violet-700 hover:to-indigo-700 hover:shadow-lg ${
-      uploading
-        ? "pointer-events-none cursor-not-allowed opacity-60"
-        : "cursor-pointer"
-    }`}
-  >
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="h-5 w-5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 8l-4-4m0 0L8 8m4-4v12"
-      />
-    </svg>
-
-    {uploading ? "Uploading..." : "Upload Image"}
-
-    <input
-      type="file"
-      accept="image/jpeg,image/png,image/webp"
-      onChange={handleImageUpload}
-      disabled={uploading}
-      className="hidden"
-    />
-  </label>
-</div>
-
 
       {isEditing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+        <div
+  className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+  onClick={() => setIsEditing(false)}
+>
+          <div
+  className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
+  onClick={(e) => e.stopPropagation()}
+>
             <h2 className="mb-5 text-xl font-bold text-slate-800">
               Edit Product
             </h2>
+
+            <div className="mb-5">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Product Image
+              </label>
+
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-5 transition hover:border-indigo-500 hover:bg-indigo-50">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="mb-2 h-8 w-8 text-indigo-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 8l-4-4m0 0L8 8m4-4v12"
+                  />
+                </svg>
+
+                <span className="text-sm font-semibold text-indigo-600">
+                  Click to upload or change image
+                </span>
+
+                <span className="mt-1 text-xs text-slate-500">
+                  JPEG, PNG or WebP (Maximum 5MB)
+                </span>
+
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+              </label>
+
+              {selectedImage && (
+                <p className="mt-2 text-sm font-medium text-green-600">
+                  Selected: {selectedImage.name}
+                </p>
+              )}
+            </div>
 
             <div className="space-y-4">
               <input
@@ -322,13 +386,13 @@ export default function ProductActions({ product }: ProductActionsProps) {
               </button>
 
               <button
-  type="button"
-  onClick={handleUpdate}
-  disabled={loading}
-  className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
->
-  {loading ? "Saving..." : "Save Changes"}
-</button>
+                type="button"
+                onClick={handleUpdate}
+                disabled={loading}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {loading ? "Saving..." : "Save Changes"}
+              </button>
             </div>
           </div>
         </div>

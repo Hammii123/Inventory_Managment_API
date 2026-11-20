@@ -113,7 +113,7 @@ export default function SupplierActions({ supplier, }: { supplier: Supplier; }) 
                     setMessage("");
                     setEditing(true);
                 }}
-                className="rounded-lg bg-blue-100 px-3 py-2 text-sm text-blue"
+                className="rounded-lg bg-blue-100 px-3 py-2 text-sm font-semibold text-blue"
             >
                 Edit
             </button>
@@ -121,14 +121,20 @@ export default function SupplierActions({ supplier, }: { supplier: Supplier; }) 
             <button
                 onClick={handleDelete}
                 disabled={loading}
-                className="rounded-lg bg-red-100 px-3 py-2 text-sm text-sm text-red-700 disabled:opacity-50"
+                className="rounded-lg bg-red-100 px-3 py-2 text-sm text-sm font-semibold text-red-700 disabled:opacity-50"
             >
                 Delete
             </button>
 
             {editing && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-lg rounded-xl bg-white p-6">
+               <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    onClick={() => setEditing(false)}
+>
+                   <div
+    className="w-full max-w-lg rounded-xl bg-white p-6"
+    onClick={(e) => e.stopPropagation()}
+>
                         <h2 className="mb-4 text-xl font-bold">Edit Supplier</h2>
 
                         <div className="space-y-3">

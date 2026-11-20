@@ -11,8 +11,7 @@ export default function Sidebar() {
     { name: "Dashboard", path: "/" },
     { name: "Products", path: "/products" },
     { name: "Suppliers", path: "/suppliers" },
-    { name: "Stock Management", path: "/stock" },
-    { name: "Inventory History", path: "/history" },
+    
   ];
 
   return (
